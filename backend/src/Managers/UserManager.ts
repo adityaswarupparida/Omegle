@@ -21,6 +21,7 @@ export class UserManager {
             socket: socket
         })
         this.queue.push(socket.id);
+        socket.send("lobby");
         this.matchUser();
         this.initHandlers(socket);
     }
@@ -32,8 +33,11 @@ export class UserManager {
         if (this.queue.length < 2) {
             return;
         }
-        const user1 = this.users.find(user => user.socket.id === this.queue.shift());
-        const user2 = this.users.find(user => user.socket.id === this.queue.pop());
+        const skt1 = this.queue.shift();
+        const skt2 = this.queue.pop();
+
+        const user1 = this.users.find(user => user.socket.id === skt1);
+        const user2 = this.users.find(user => user.socket.id === skt2);
 
         if (!user1 || !user2) {
             return;

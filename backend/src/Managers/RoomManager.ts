@@ -15,26 +15,32 @@ export class RoomManager {
         return GLOBAL_ROOM_NO++;
     }
     createRoom(user1: User, user2: User) {
-        const roomId = this.generate();
+        const roomId = this.generate().toString();
         this.rooms.set(roomId.toString(), {
             user1,
             user2,
         });
 
         user1.socket.emit("send-offer", {
-            room: roomId
+            roomId: roomId
+        })
+
+        user2.socket.emit("send-offer", {
+            roomId: roomId
         })
     }
     onOffer(roomId: string, SDP: string) {
         const user2 = this.rooms.get(roomId)?.user2;
         user2?.socket.emit("offer", {
-            SDP
+            SDP,
+            roomId
         })
     }
     onAnswer(roomId: string, SDP: string) {
         const user1 = this.rooms.get(roomId)?.user1;
-        user1?.socket.emit("offer", {
-            SDP
+        user1?.socket.emit("answer", {
+            SDP,
+            roomId
         })
     }
 }
