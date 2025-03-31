@@ -21,6 +21,8 @@ export class RoomManager {
             user2,
         });
 
+        console.log('4. Inside createroom');
+
         user1.socket.emit("send-offer", {
             roomId: roomId
         })
@@ -29,18 +31,46 @@ export class RoomManager {
             roomId: roomId
         })
     }
-    onOffer(roomId: string, SDP: string) {
-        const user2 = this.rooms.get(roomId)?.user2;
-        user2?.socket.emit("offer", {
+    onOffer(roomId: string, SDP: string, socketId: string) {
+        console.log('6. Inside onOffer');
+
+        const room = this.rooms.get(roomId);
+        if(!room) return;
+
+        const receivingUser = room.user1.socket.id === socketId ? room.user2: room.user1;
+        console.log('Inside onOffer logic '+receivingUser.socket.id+ ' from: '+socketId);
+
+        receivingUser.socket.emit("offer", {
             SDP,
             roomId
         })
     }
-    onAnswer(roomId: string, SDP: string) {
-        const user1 = this.rooms.get(roomId)?.user1;
-        user1?.socket.emit("answer", {
+    onAnswer(roomId: string, SDP: string, socketId: string) {
+        console.log('7. Inside onAnswer');
+
+        const room = this.rooms.get(roomId);
+        if(!room) return;
+
+        const receivingUser = room.user1.socket.id === socketId ? room.user2: room.user1;
+        console.log('Inside onANswer logic '+receivingUser.socket.id+ ' from: '+socketId);
+
+        receivingUser.socket.emit("answer", {
             SDP,
             roomId
+        })
+    }
+
+    onIceCandidates(roomId: string, socketId: string, candidate: any, type: "sender"|"receiver") {
+        console.log('8. Inside onIceCandidates');
+
+        const room = this.rooms.get(roomId);
+        if(!room) return;
+
+        const receivingUser = room.user1.socket.id === socketId ? room.user2: room.user1;
+        console.log('Inside onIceCandidates logic for '+receivingUser.socket.id+ ' from: '+socketId);
+        receivingUser.socket.emit("add-ice-candidate", {
+            candidate,
+            type
         })
     }
 }
