@@ -77,6 +77,8 @@ export const Room = ({
             setLobby(false);
             const rc = new RTCPeerConnection();
             const stream = new MediaStream();
+            
+            // if(!remoteVideoRef.current) return;
             if(remoteVideoRef.current)
                 remoteVideoRef.current.srcObject = stream;
             rc.ontrack = async (e) => {
@@ -95,7 +97,9 @@ export const Room = ({
                     remoteVideoRef.current.srcObject.addTrack(e.track);
                 }
                 //@ts-ignore
-                await remoteVideoRef.current.play();
+                if(remoteVideoRef.current && remoteVideoRef.current.paused){
+                    await remoteVideoRef.current.play();
+                }
             }
             await rc.setRemoteDescription({ sdp: SDP, type: "offer" });
             const sdp = (await rc.createAnswer()).sdp;
@@ -103,32 +107,13 @@ export const Room = ({
             await rc.setLocalDescription({ sdp: sdp, type: "answer" });
             console.log('answer local description set');
 
-            if(remoteVideoRef.current)
-                remoteVideoRef.current.srcObject = stream;
+            // if(remoteVideoRef.current)
+            //     remoteVideoRef.current.srcObject = stream;
             // console.log(remoteVideoRef.current.srcObject);
             setRemoteMediaStream(stream);
             setReceivePC(rc);
 
-
             window.pcr = rc;
-            // rc.ontrack = (e) => {
-            //     alert('10. Inside ontrack '+e);
-            // }
-            // rc.ontrack = ({ track, type }) => {
-            //     console.log('10. Inside ontrack');
-            //     if(!remoteVideoRef.current) return;
-
-            //     if(type == "audio") {
-            //         // setRemoteAudioTrack(track);
-            //         //@ts-ignore
-            //         remoteVideoRef.current.srcObject.addTrack(track);
-            //     } else {
-            //         // setRemoteVideoTrack(track);
-            //         //@ts-ignore
-            //         remoteVideoRef.current.srcObject.addTrack(track);
-            //     }
-            //     remoteVideoRef.current.play();
-            // }
 
             rc.onicecandidate = async (e) => {
                 if(!e.candidate) return;
@@ -149,34 +134,6 @@ export const Room = ({
                 SDP: sdp,
                 roomId: roomId
             })
-            // setTimeout(() => {
-            //     const track1 = rc.getTransceivers()[0].receiver.track
-            //     const track2 = rc.getTransceivers()[1].receiver.track
-            //     console.log(track1);
-            //     if (track1.kind === "video") {
-            //         setRemoteAudioTrack(track2)
-            //         setRemoteVideoTrack(track1)
-            //     } else {
-            //         setRemoteAudioTrack(track1)
-            //         setRemoteVideoTrack(track2)
-            //     }
-            //     //@ts-ignore
-            //     remoteVideoRef.current.srcObject.addTrack(track1)
-            //     //@ts-ignore
-            //     remoteVideoRef.current.srcObject.addTrack(track2)
-            //     //@ts-ignore
-            //     remoteVideoRef.current.play();
-            //     // if (type == 'audio') {
-            //     //     // setRemoteAudioTrack(track);
-            //     //     // @ts-ignore
-            //     //     remoteVideoRef.current.srcObject.addTrack(track)
-            //     // } else {
-            //     //     // setRemoteVideoTrack(track);
-            //     //     // @ts-ignore
-            //     //     remoteVideoRef.current.srcObject.addTrack(track)
-            //     // }
-            //     // //@ts-ignore
-            // }, 5000)
         });
 
         socket.on("answer", ({ roomId, SDP }) => {
@@ -203,7 +160,8 @@ export const Room = ({
                     if (!pc) {
                         console.error("receicng pc nout found")
                     } else {
-                        console.error(pc.ontrack)
+                        // console.error(pc.ontrack)
+                        console.log('found');
                     }
                     pc?.addIceCandidate(candidate)
                     return pc;
@@ -222,18 +180,19 @@ export const Room = ({
         }) 
 
         setSocket(socket);
+
+        return () => {
+            sendPC?.close();
+            receivePC?.close();
+        }
     }, []);
 
     useEffect(() => {
-        console.log("20. localvideoref");
-
         (async() => {
         if (localVideoRef && localVideoRef.current) {
-            // if (!localVideoTrack) return;
-            console.log("21. localvideoref inside if");
-            
-            if(localVideoTrack)
-                localVideoRef.current.srcObject = new MediaStream([localVideoTrack]);
+            if (!localVideoTrack) return;            
+            // if(localVideoTrack)
+            localVideoRef.current.srcObject = new MediaStream([localVideoTrack]);
             await localVideoRef.current.play();
         }})();
     }, [localVideoRef]);
@@ -246,7 +205,7 @@ export const Room = ({
                 </div>
                 <div className='w-full'>
                     { lobby ? 'Waiting to connect you with someone...': null }
-                    <video autoPlay className='w-full' ref={remoteVideoRef}></video>
+                    <video className='w-full' ref={remoteVideoRef}></video>
                 </div>
             </div>
         </div>
