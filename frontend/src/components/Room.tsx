@@ -17,6 +17,7 @@ export const Room = ({
     // const name = searchParams.get("name");
     const [lobby, setLobby] = useState(true);
     const [socket, setSocket] = useState<Socket>();
+    const [room, setRoom] = useState<String>();
     const [sendPC, setSendPC] = useState<RTCPeerConnection>();
     const [receivePC, setReceivePC] = useState<RTCPeerConnection>();
     // const [remoteVideoTrack, setRemoteVideoTrack] = useState<MediaStreamTrack>();
@@ -27,10 +28,9 @@ export const Room = ({
 
     useEffect(() => {
         const socket: Socket = io(URL);
-        // socket.emit('join', {
-        //     name: name
-        // });
-        console.log('4. Inside useEffect '+socket.id);
+        socket.emit('join', {
+            name: name
+        });
 
         socket.on("send-offer", async ({ roomId }) => {
             console.log("5. Send offer please");
@@ -47,9 +47,7 @@ export const Room = ({
             // console.log('lc '+lc);
 
             lc.onicecandidate = async (e) => {
-                console.log("7. Receiving ice candidate locally "+JSON.stringify(e.candidate));
                 if(e.candidate) {
-                    console.log('8. Inside lc.oncandidate');
                     socket.emit("add-ice-candidate", {
                         candidate: e.candidate,
                         type: "sender",
@@ -85,6 +83,8 @@ export const Room = ({
                 console.log('10. Inside ontrack');
                 // if(!remoteVideoRef.current) return;
                 // @ts-ignore
+                // remoteVideoRef.current.srcObject.addTrack(e.track);
+
                 console.log(remoteVideoRef.current.srcObject);
                 console.log(e.track);
                 if(e.type == "audio") {
@@ -101,6 +101,9 @@ export const Room = ({
                     await remoteVideoRef.current.play();
                 }
             }
+            // to ensure icecandidates from local find remote connection
+            setReceivePC(rc);
+
             await rc.setRemoteDescription({ sdp: SDP, type: "offer" });
             const sdp = (await rc.createAnswer()).sdp;
             console.log('SDP of Receiver');
@@ -151,6 +154,9 @@ export const Room = ({
         socket.on("lobby", () => {
             setLobby(true);
         })
+        socket.on("room", ({ roomId }) => {
+            setRoom(roomId);
+        })
 
         socket.on("add-ice-candidate", ({ candidate, type }) => {
             console.log("14. add ice candidate from remote");
@@ -163,6 +169,7 @@ export const Room = ({
                         // console.error(pc.ontrack)
                         console.log('found');
                     }
+                    // console.log(pc?.remoteDescription);
                     pc?.addIceCandidate(candidate)
                     return pc;
                 });
@@ -173,11 +180,18 @@ export const Room = ({
                     } else {
                         // console.error(pc.ontrack)
                     }
+                    console.log(pc?.remoteDescription);
                     pc?.addIceCandidate(candidate)
                     return pc;
                 });
             }
         }) 
+
+        socket.on("close", () => {
+            // console.log("Inside close");
+            window.location.reload();
+            socket.close();
+        })
 
         setSocket(socket);
 
@@ -199,14 +213,30 @@ export const Room = ({
 
     return (
         <div>
-            <div className="flex justify-between w-screen">
-                <div className='w-full'>
-                    <video autoPlay className='w-full' ref={localVideoRef}></video>
+            <div className="flex flex-col lg:flex-row justify-between w-screen">
+                <div className='w-full relative'>
+                    <video autoPlay className='w-full relative' ref={localVideoRef}></video>
+                    <div className='absolute z-10 text-white text-lg bottom-2 right-2'>
+                            You ({name})
+                    </div>
                 </div>
-                <div className='w-full'>
+                <div className='w-full relative'>
                     { lobby ? 'Waiting to connect you with someone...': null }
-                    <video className='w-full' ref={remoteVideoRef}></video>
+                    <video className='w-full relative' ref={remoteVideoRef}></video>
                 </div>
+            </div>
+            <div className='flex justify-center items-center'>
+                <button className='bg-red-500/90 hover:bg-red-600 text-xl px-9 py-3 m-4 rounded-full cursor-pointer'
+                    onClick={() => {
+                        window.location.reload();
+                        socket?.emit("close", {
+                            room
+                        });
+                        socket?.close();
+                    }}
+                >
+                    Leave call
+                </button>
             </div>
         </div>
     );

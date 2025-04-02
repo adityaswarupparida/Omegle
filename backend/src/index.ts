@@ -13,13 +13,13 @@ const userManager = new UserManager();
 
 io.on("connection", (socket: Socket) => {
     console.log('Connection established!!! '+count++);
-    // socket.on('join', function (data) {
+    socket.on("join", function (data: { name : string }) {
         // socket.join(data.email); // We are using room of socket io
-    userManager.addUser("Flappy", socket);
+        userManager.addUser(data.name, socket);
 
-    // });
-    socket.on("disconnect", () => {
-        userManager.removeUser(socket.id);
+    });
+    socket.on("close", ({ room }) => {
+        userManager.removeUser(room, socket.id);
     })
 })
 
